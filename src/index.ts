@@ -83,8 +83,26 @@ async function handleModalSubmit(interaction: discord.ModalSubmitInteraction) {
     (_, i) => interaction.fields.getTextInputValue(i.toString()).trim() || " "
   );
   const { url } = await memes.createMeme(templateId, captions);
+
+  // button to create another meme with the same template
+  const createButton = new discord.ButtonBuilder()
+    .setCustomId(CREATE_BUTTON_PREFIX + templateId)
+    .setLabel("Reuse this template")
+    .setStyle(discord.ButtonStyle.Primary);
+
+  const buttons =
+    new discord.ActionRowBuilder<discord.ButtonBuilder>().addComponents(
+      createButton
+    );
+
+  const embed = new discord.EmbedBuilder().setImage(url).setFooter({
+    text: `Created by ${interaction.user.displayName} with /meme`,
+    iconURL: interaction.user.avatarURL() ?? undefined,
+  });
+
   await interaction.reply({
-    content: url,
+    components: [buttons],
+    embeds: [embed],
   });
 }
 
@@ -123,17 +141,17 @@ async function handleButton(interaction: discord.ButtonInteraction) {
 async function handleMemeSelection(
   interaction: discord.ChatInputCommandInteraction
 ) {
-  const template = interaction.options.getString("template", true);
+  const selectedTemplateName = interaction.options.getString("template", true);
   const templates = await memes.getTopMemeTemplates();
-  const match = templates.find((t) => t.name === template);
-  if (!match) {
+  const template = templates.find((t) => t.name === selectedTemplateName);
+  if (!template) {
     await interaction.reply({
       content: "Invalid template",
       flags: discord.MessageFlags.Ephemeral,
     });
     return;
   }
-  const { boxCount, id } = match;
+  const { boxCount, id } = template;
   assert(boxCount > 0);
 
   const sampleCaptions = Array.from(
@@ -141,6 +159,10 @@ async function handleMemeSelection(
     (_, i) => `Text box ${i + 1}`
   );
   const { url } = await memes.createMeme(id, sampleCaptions);
+
+  const embed = new discord.EmbedBuilder()
+    .setImage(url)
+    .setTitle(template.name);
 
   const createButton = new discord.ButtonBuilder()
     .setCustomId(CREATE_BUTTON_PREFIX + id)
@@ -153,7 +175,7 @@ async function handleMemeSelection(
     );
 
   await interaction.reply({
-    content: url,
+    embeds: [embed],
     flags: discord.MessageFlags.Ephemeral,
     components: [buttons],
   });
