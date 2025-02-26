@@ -78,8 +78,9 @@ async function handleModalSubmit(interaction: discord.ModalSubmitInteraction) {
   const templateId = customId.slice(BUILDER_MODAL_PREFIX.length);
   const template = await memes.getTemplateById(templateId);
   assert(template);
-  const captions = Array.from({ length: template.boxCount }, (_, i) =>
-    interaction.fields.getTextInputValue(i.toString())
+  const captions = Array.from(
+    { length: template.boxCount },
+    (_, i) => interaction.fields.getTextInputValue(i.toString()).trim() || " "
   );
   const { url } = await memes.createMeme(templateId, captions);
   await interaction.reply({
@@ -105,6 +106,7 @@ async function handleButton(interaction: discord.ButtonInteraction) {
 
   for (let i = 0; i < boxCount; i++) {
     const textInput = new discord.TextInputBuilder()
+      .setRequired(false)
       .setCustomId(i.toString())
       .setLabel(`Text box ${i + 1}/${boxCount}`)
       .setStyle(discord.TextInputStyle.Short);
@@ -163,7 +165,7 @@ async function handleMemeAutocomplete(
   const input = interaction.options.getFocused();
   const templates = await memes.getTopMemeTemplates();
   const matches = templates.filter((template) =>
-    template.name.startsWith(input)
+    template.name.toLowerCase().includes(input.toLowerCase().trim())
   );
   const replies = matches.map((template) => ({
     name: template.name,
